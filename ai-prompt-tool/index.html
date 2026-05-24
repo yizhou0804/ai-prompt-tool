@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 视频提示词生成器</title>
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --primary: #4f6ef7;
+    --primary-hover: #3b56d9;
+    --text: #1a1a2e;
+    --text-secondary: #6b7280;
+    --border: #e2e4ea;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 24px;
+    line-height: 1.6;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h1 small {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .badge {
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--primary);
+    color: #fff;
+    padding: 1px 8px;
+    border-radius: 999px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  input[type="text"],
+  textarea,
+  select {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    background: #fff;
+    color: var(--text);
+    width: 100%;
+  }
+  input[type="text"]:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
+  }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text);
+  }
+  .radio-group input[type="radio"] {
+    display: none;
+  }
+  .radio-group input[type="radio"]:checked + span {
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .radio-group input[type="radio"]:checked ~ .radio-label-text { color: var(--primary); font-weight: 600; }
+  .radio-group label:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(79,110,247,0.06);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .actions { display: flex; gap: 10px; margin-top: 16px; }
+
+  .output-section { margin-top: 32px; }
+
+  .output-item {
+    margin-bottom: 16px;
+  }
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .output-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .output-content {
+    background: #f8f9fc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 48px;
+    transition: background 0.2s;
+  }
+  .output-content:empty::before {
+    content: attr(data-placeholder);
+    color: #bbb;
+  }
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .copy-btn.copied {
+    border-color: #10b981;
+    color: #10b981;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-secondary);
+  }
+  .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
+  .empty-state p { font-size: 14px; }
+
+  .tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tag {
+    display: inline-block;
+    background: rgba(79,110,247,0.08);
+    color: var(--primary);
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 16px 12px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>
+    AI 视频提示词生成器
+    <small>🧪</small>
+  </h1>
+  <p class="subtitle">填写产品信息，一键生成多平台视频脚本与提示词</p>
+
+  <!-- 输入区 -->
+  <div class="card">
+    <div class="card-title">产品信息</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="productName">产品名称</label>
+        <input type="text" id="productName" placeholder="例如：智能保温杯" />
+      </div>
+      <div class="form-group">
+        <label for="targetAudience">目标人群</label>
+        <input type="text" id="targetAudience" placeholder="例如：25-35岁上班族" />
+      </div>
+      <div class="form-group full">
+        <label for="sellingPoints">产品卖点（每行一个）</label>
+        <textarea id="sellingPoints" rows="3" placeholder="例如：48小时长效保温&#10;食品级316不锈钢&#10;智能温显触控"></textarea>
+      </div>
+      <div class="form-group">
+        <label>视频平台</label>
+        <div class="radio-group" id="platformGroup">
+          <label><input type="radio" name="platform" value="可灵" checked /><span>可灵</span></label>
+          <label><input type="radio" name="platform" value="Flow" /><span>Flow</span></label>
+          <label><input type="radio" name="platform" value="即梦" /><span>即梦</span></label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>视频风格</label>
+        <div class="radio-group" id="styleGroup">
+          <label><input type="radio" name="style" value="真实产品展示" checked /><span>真实产品展示</span></label>
+          <label><input type="radio" name="style" value="手部操作" /><span>手部操作</span></label>
+          <label><input type="radio" name="style" value="生活场景" /><span>生活场景</span></label>
+          <label><input type="radio" name="style" value="电商广告" /><span>电商广告</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="generateBtn">✨ 生成内容</button>
+      <button class="btn btn-outline" id="clearBtn">清空</button>
+    </div>
+  </div>
+
+  <!-- 输出区 -->
+  <div class="output-section" id="outputSection">
+    <div class="empty-state" id="emptyState">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <p>填写左侧信息后，点击「生成内容」</p>
+    </div>
+
+    <div id="outputList" style="display:none">
+      <div class="card-title" style="margin-bottom:16px">生成结果</div>
+
+      <div class="output-item">
+        <div class="output-header">
+          <span class="output-label">📝 中文视频脚本</span>
+          <button class="copy-btn" data-target="chineseScript">复制</button>
+        </div>
+        <div class="output-content" id="chineseScript" data-placeholder="点击生成按钮获取内容"></div>
+      </div>
+
+      <div class="output-item">
+        <div class="output-header">
+          <span class="output-label">🇯🇵 日文视频脚本</span>
+          <button class="copy-btn" data-target="japaneseScript">复制</button>
+        </div>
+        <div class="output-content" id="japaneseScript" data-placeholder="点击生成按钮获取内容"></div>
+      </div>
+
+      <div class="output-item">
+        <div class="output-header">
+          <span class="output-label">🎨 生图提示词</span>
+          <button class="copy-btn" data-target="imagePrompt">复制</button>
+        </div>
+        <div class="output-content" id="imagePrompt" data-placeholder="点击生成按钮获取内容"></div>
+      </div>
+
+      <div class="output-item">
+        <div class="output-header">
+          <span class="output-label">🎬 图生视频提示词</span>
+          <button class="copy-btn" data-target="videoPrompt">复制</button>
+        </div>
+        <div class="output-content" id="videoPrompt" data-placeholder="点击生成按钮获取内容"></div>
+      </div>
+
+      <div class="output-item">
+        <div class="output-header">
+          <span class="output-label">📱 TikTok 标题</span>
+          <button class="copy-btn" data-target="tiktokTitle">复制</button>
+        </div>
+        <div class="output-content" id="tiktokTitle" data-placeholder="点击生成按钮获取内容"></div>
+      </div>
+
+      <div class="output-item">
+        <div class="output-header">
+          <span class="output-label">🏷️ TikTok 标签</span>
+          <button class="copy-btn" data-target="tiktokTags">复制</button>
+        </div>
+        <div class="output-content" id="tiktokTags" data-placeholder="点击生成按钮获取内容"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // DOM refs
+  const $ = id => document.getElementById(id);
+  const productName = $('productName');
+  const sellingPoints = $('sellingPoints');
+  const targetAudience = $('targetAudience');
+  const generateBtn = $('generateBtn');
+  const clearBtn = $('clearBtn');
+  const emptyState = $('emptyState');
+  const outputList = $('outputList');
+
+  const out = {
+    chineseScript: $('chineseScript'),
+    japaneseScript: $('japaneseScript'),
+    imagePrompt: $('imagePrompt'),
+    videoPrompt: $('videoPrompt'),
+    tiktokTitle: $('tiktokTitle'),
+    tiktokTags: $('tiktokTags'),
+  };
+
+  function getSelected(name) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : '';
+  }
+
+  // ----- generation logic -----
+  function generate() {
+    const name = productName.value.trim();
+    const points = sellingPoints.value.trim().split('\n').filter(s => s.trim());
+    const audience = targetAudience.value.trim();
+    const platform = getSelected('platform');
+    const style = getSelected('style');
+
+    if (!name) { alert('请输入产品名称'); productName.focus(); return; }
+    if (!points.length) { alert('请输入产品卖点'); sellingPoints.focus(); return; }
+    if (!audience) { alert('请输入目标人群'); targetAudience.focus(); return; }
+
+    const pStr = points.join('、');
+
+    // --- Chinese Script ---
+    const scripts = {
+      '真实产品展示': `【开场】（0-3秒）\n镜头对准 ${name}，缓缓旋转展示产品全貌。光线柔和，背景干净。\n\n【卖点展示】（3-15秒）\n特写镜头逐一展示产品细节：${pStr}。\n每个卖点停留2-3秒，搭配字幕突出关键词。\n\n【使用场景】（15-25秒）\n用户自然使用产品的画面，展现${audience}的真实体验。\n\n【结尾】（25-30秒）\n产品全景 + 品牌口号 + 购买引导`,
+      '手部操作': `【开场】（0-3秒）\n一双手从桌面拿起 ${name}，自然开场。\n\n【操作演示】（3-18秒）\n第一视角手部操作，展示：${pStr}。\n镜头跟随手部动作，节奏流畅。\n\n【细节特写】（18-25秒）\n手掌中的 ${name}，按压、旋转、开合等操作细节。\n\n【结尾】（25-30秒）\n双手展示产品 + 推荐语，适合${audience}`,
+      '生活场景': `【场景】（0-5秒）\n生活中的日常场景，主角正在使用 ${name}。\n暖色调光线，自然真实。\n\n【互动】（5-20秒）\n主角与 ${name} 的自然互动，穿插产品卖点：${pStr}。\n展现产品如何融入${audience}的日常生活。\n\n【情感】（20-25秒）\n使用后的满足感/便利感特写。\n\n【结尾】（25-30秒）\n生活场景全景 + 产品入镜 + 购买引导`,
+      '电商广告': `【黄金3秒】（0-3秒）\n强视觉冲击开场：${name} 在聚光灯下亮相。\n\n【痛点共鸣】（3-8秒）\n${audience} 在意的痛点场景，引出产品。\n\n【卖点轰炸】（8-20秒）\n高强度展示核心卖点：${pStr}。\n快节奏剪辑，动态字幕。\n\n【转化收尾】（20-30秒）\n限时优惠/购买引导 + 品牌口号 + 产品展示`
+    };
+    out.chineseScript.textContent = scripts[style] || scripts['真实产品展示'];
+
+    // --- Japanese Script ---
+    const jpStyles = {
+      '真实产品展示': `【オープニング】（0-3秒）\n${name} をカメラに映し、ゆっくりと回転させながら全体を披露。柔らかな照明、クリーンな背景。\n\n【特徴紹介】（3-15秒）\n${pStr} を順にクローズアップ。各特徴を2〜3秒ずつ見せ、キーワードをテロップで強調。\n\n【使用シーン】（15-25秒）\n${audience} が実際に使用している自然な様子。\n\n【エンディング】（25-30秒）\n製品全景 + ブランドメッセージ + 購入案内`,
+      '手部操作': `【オープニング】（0-3秒）\n机の上から ${name} を手に取り、自然にスタート。\n\n【操作デモ】（3-18秒）\n主観視点での手元操作：${pStr}。\n手の動きに合わせてなめらかに撮影。\n\n【詳細クローズアップ】（18-25秒）\n手のひらで ${name} を押す、回す、開閉するなどの操作詳細。\n\n【エンディング】（25-30秒）\n両手で製品を見せる + おすすめの一言。${audience} にぴったり。`,
+      '生活场景': `【シーン】（0-5秒）\n日常のワンシーン。主人公が ${name} を自然に使っています。暖かい照明、リアルな雰囲気。\n\n【インタラクション】（5-20秒）\n主人公と ${name} の自然な掛け合い。${pStr} を披露。\n${audience} の日常生活に溶け込む様子を表現。\n\n【感情】（20-25秒）\n使用後の満足感や便利さを感じる表情。\n\n【エンディング】（25-30秒）\n生活シーン全景 + 製品をフレームイン + 購入案内`,
+      '电商广告': `【ゴールデン3秒】（0-3秒）\n強いビジュアルインパクト：${name} がスポットライトの中で登場。\n\n【共感】（3-8秒）\n${audience} が気になる悩みやシーンを描き、製品を紹介。\n\n【特徴アピール】（8-20秒）\nハイテンポで核心的な特徴を連続披露：${pStr}。\n高速編集、動的テロップ。\n\n【コンバージョン】（20-30秒）\n期間限定オファー / 購入案内 + ブランドメッセージ + 製品表示`
+    };
+    out.japaneseScript.textContent = jpStyles[style] || jpStyles['真实产品展示'];
+
+    // --- Image Prompt ---
+    const imgEnv = {
+      '可灵': '8K超高画质，电影级光影，细节丰富',
+      'Flow': '潮流视觉风格，高饱和度，动态感强',
+      '即梦': '梦幻氛围，柔光滤镜，唯美质感',
+    };
+    const imgStyle = {
+      '真实产品展示': `产品摄影，${name}置于简约背景前，柔光箱布光，金属质感，细节锐利，静物拍摄`,
+      '手部操作': `第一人称视角，双手手持${name}，室内自然光，手指动作清晰，浅景深，背景虚化`,
+      '生活场景': `${audience}在日常生活环境中使用${name}，自然光线，生活化场景，温馨氛围，纪实风格`,
+      '电商广告': `商业广告摄影，${name}作为视觉焦点，创意构图，高对比度光影，产品质感突出，促销氛围`,
+    };
+    const platformEnv = imgEnv[platform] || imgEnv['可灵'];
+    const styleDesc = imgStyle[style] || imgStyle['真实产品展示'];
+    out.imagePrompt.textContent = `产品名称：${name}\n目标人群：${audience}\n核心卖点：${pStr}\n\n画面描述：${styleDesc}\n\n画质要求：${platformEnv}\n构图方式：居中构图，留白充分，适合后期剪辑`;
+
+    // --- Video Prompt ---
+    const vpEnv = {
+      '可灵': '可灵AI图生视频，保持主体一致性，流畅运动，画质4K',
+      'Flow': 'Flow图生视频，动态过渡自然，色彩鲜艳，30fps',
+      '即梦': '即梦AI视频，梦幻风格，运镜平滑，光影流动',
+    };
+    const vpStyle = {
+      '真实产品展示': `镜头缓慢环绕${name}旋转，光线柔和变化，产品表面光影流动，背景虚化，匀速运镜`,
+      '手部操作': `手部动作流畅自然，手指按压/旋转/操作${name}，跟随手势运镜，动作连贯`,
+      '生活场景': `${audience}使用${name}的全过程，动作自然流畅，场景环境动态丰富，人物表情生动`,
+      '电商广告': `快节奏运镜，${name}从不同角度切入画面，光影闪烁，文字特效入场，动态感强烈`,
+    };
+    out.videoPrompt.textContent = `【平台】${platform}\n【参考图】基于生成的${name}产品图进行视频化\n【运动描述】${vpStyle[style] || vpStyle['真实产品展示']}\n【视频参数】${vpEnv[platform] || vpEnv['可灵']}\n【注意事项】主体一致性，避免形变，光影自然`;
+
+    // --- TikTok Title ---
+    const titleCandidates = [
+      `${audience}注意！这款${name}真的绝了 🔥`,
+      `被问爆了！${name}到底值不值得买？`,
+      `${name}开箱实测！${points[0] || '效果惊人'} 🤯`,
+      `闺蜜种草了我的${name}，结果她先买了😂`,
+      `回购3次的${name}，今天必须安利给你们`,
+      `千万别买${name}！除非你想${points[0] || '体验感拉满'}`,
+      `${audience}的福音！${name}使用一周真实感受`,
+      `只要XX元！这个${name}把性价比拉满了`,
+      `我妈用了都说好的${name}，真的绝💯`,
+      `出圈了！${name}凭什么成为${platform}爆款？`,
+    ];
+    out.tiktokTitle.textContent = titleCandidates[Math.floor(Math.random() * titleCandidates.length)];
+
+    // --- TikTok Tags ---
+    const baseTags = [`#${name}`, '#好物推荐', '#开箱测评', '#种草', '#购物分享'];
+    const audTags = audience ? audience.split(/[,，&\s]+/).filter(Boolean).map(t => `#${t}`) : [];
+    const platTag = { '可灵': '#可灵AI', 'Flow': '#Flow', '即梦': '#即梦' }[platform] || '';
+    const pointTags = points.slice(0,2).map(p => `#${p.replace(/[^\w一-龥]/g, '')}`);
+    const styleTags = { '真实产品展示': '#产品展示', '手部操作': '#手部操作', '生活场景': '#生活场景', '电商广告': '#电商广告' };
+    const extraTags = ['#TikTok', '#viral', '#fyp', '#musthave', '#gadgets', '#tiktokmademebuyit', '#dailyuse', '#trending'];
+
+    let tags = [...baseTags, ...audTags];
+    if (platTag) tags.push(platTag);
+    tags.push(...pointTags);
+    tags.push(styleTags[style] || '');
+    // add 2 random extras
+    for (let i = extraTags.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [extraTags[i], extraTags[j]] = [extraTags[j], extraTags[i]];
+    }
+    tags.push(extraTags[0], extraTags[1]);
+
+    // render tags as inline spans
+    const uniqueTags = [...new Set(tags.filter(Boolean))];
+    out.tiktokTags.innerHTML = uniqueTags.map(t => `<span class="tag">${t}</span>`).join(' ');
+  }
+
+  // ----- copy -----
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+    const targetId = btn.dataset.target;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+
+    let text;
+    if (targetId === 'tiktokTags') {
+      // extract tag text from span tags
+      text = Array.from(el.querySelectorAll('.tag')).map(s => s.textContent).join(' ');
+    } else {
+      text = el.textContent || el.innerText;
+    }
+
+    if (!text || text === el.dataset.placeholder) return;
+
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '已复制 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.classList.remove('copied');
+      }, 1600);
+    }).catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      const orig = btn.textContent;
+      btn.textContent = '已复制 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.classList.remove('copied');
+      }, 1600);
+    });
+  });
+
+  // ----- generate button -----
+  generateBtn.addEventListener('click', function() {
+    generate();
+    emptyState.style.display = 'none';
+    outputList.style.display = 'block';
+  });
+
+  // ----- clear button -----
+  clearBtn.addEventListener('click', function() {
+    productName.value = '';
+    sellingPoints.value = '';
+    targetAudience.value = '';
+    document.querySelector('input[name="platform"][value="可灵"]').checked = true;
+    document.querySelector('input[name="style"][value="真实产品展示"]').checked = true;
+    emptyState.style.display = 'block';
+    outputList.style.display = 'none';
+  });
+
+  // ----- Enter key shortcut -----
+  productName.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') generateBtn.click();
+  });
+})();
+</script>
+</body>
+</html>
